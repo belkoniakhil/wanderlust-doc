@@ -1,0 +1,1208 @@
+# WANDERLUST 2.0
+## Master Project Blueprint & Technical Execution Document
+
+**Project Type:** Scalable Rental Booking Platform  
+**Project Architecture:** Horizontally Scalable Modular Monolith  
+**Primary Goal:** Build an original rental booking platform and evolve it into a distributed, containerized, load-balanced application with Redis caching.
+
+**Budget:** ₹0 — Free-tier services and open-source technologies only  
+**Development Approach:** Incremental implementation, one feature at a time  
+**Primary Objective:** Strong portfolio project, practical system design knowledge, and interview-ready engineering experience.
+
+---
+
+# 1. PROJECT VISION
+
+Wanderlust 2.0 is an original accommodation and rental booking platform inspired by applications such as Airbnb.
+
+However, this project is not simply about creating another rental booking website.
+
+Our primary objective is to understand how a backend application can evolve from a simple Node.js application into a horizontally scalable system.
+
+We will first develop a fully functional rental booking application.
+
+Once the application is stable, we will introduce infrastructure and system design concepts incrementally:
+
+1. Docker containerization.
+2. Multiple backend instances.
+3. Nginx reverse proxy and load balancing.
+4. Redis caching.
+5. Cache invalidation and expiration.
+6. Shared session management.
+7. Performance testing and benchmarking.
+
+We will not implement all these technologies simultaneously.
+
+Every feature must be implemented, understood, tested, and documented before moving to the next stage.
+
+## Core philosophy
+
+- Build our own application from scratch.
+- Understand every important line of code.
+- Avoid blindly copying tutorial implementations.
+- Prefer a modular monolith over premature microservices.
+- Introduce technologies only when there is a practical reason.
+- Keep the project deployable throughout development.
+- Avoid unnecessary paid services.
+- Measure performance instead of making unsupported performance claims.
+
+---
+
+# 2. IMPORTANT BACKGROUND
+
+We previously worked on a Wanderlust Airbnb clone using:
+
+- Node.js
+- Express.js
+- MongoDB
+- Mongoose
+- EJS
+- Passport.js
+- Express Session
+- Multer
+- Cloudinary
+- MVC architecture
+
+However, that implementation was not entirely our original work.
+
+We have decided to create a completely new implementation to:
+
+- Avoid inherited architectural limitations.
+- Avoid unnecessary dependencies and code conflicts.
+- Understand the application from its foundation.
+- Design the backend around scalability requirements.
+- Have complete ownership of the implementation.
+- Be able to confidently explain the entire project during interviews.
+
+**Important:** The old project is only a reference for understanding functionality. We must not blindly copy its implementation.
+
+---
+
+# 3. TECHNOLOGY STACK
+
+The following is our agreed initial technology stack.
+
+| Layer | Technology | Responsibility |
+|---|---|---|
+| Frontend | EJS | Server-side rendering |
+| UI | Bootstrap, CSS, JavaScript | User interface |
+| Backend | Node.js | JavaScript runtime |
+| Web framework | Express.js | Routing and middleware |
+| Database | MongoDB | Persistent data storage |
+| ODM | Mongoose | MongoDB object modeling |
+| Authentication | Passport.js | User authentication |
+| Session management | Express Session | Login sessions |
+| Containerization | Docker | Application packaging |
+| Container orchestration | Docker Compose | Local multi-container management |
+| Reverse proxy | Nginx | Request forwarding |
+| Load balancing | Nginx | Traffic distribution |
+| Cache | Redis | Fast shared data storage |
+| Testing | Postman | API and endpoint testing |
+| Load testing | k6 | Concurrent request simulation |
+| Version control | Git and GitHub | Source management |
+
+## Technologies intentionally postponed
+
+We are NOT implementing these in the initial version:
+
+- CDN
+- Kubernetes
+- Kafka
+- Microservices
+- Elasticsearch
+- Database sharding
+- Multiple databases
+- Complex distributed transactions
+- Service mesh
+
+These may be considered in future versions, but they are not part of our immediate scope.
+
+---
+
+# 4. APPLICATION FUNCTIONAL REQUIREMENTS
+
+Before introducing distributed infrastructure, we need a working application.
+
+The platform will have the following features.
+
+## 4.1 User authentication
+
+Users should be able to:
+
+- Register.
+- Log in.
+- Log out.
+- Maintain authenticated sessions.
+- Access protected routes.
+- Update their profile.
+
+Authentication will initially use Passport.js with a local username/password strategy.
+
+Passwords must be hashed securely.
+
+We will initially use Express Session. Later, its session store will be migrated to Redis to support multiple backend instances.
+
+## 4.2 Property listing management
+
+Authenticated users should be able to:
+
+- Create property listings.
+- View all listings.
+- View individual property details.
+- Edit their own listings.
+- Delete their own listings.
+- Upload property images.
+
+Each listing should contain fields such as:
+
+- Title.
+- Description.
+- Location.
+- Country.
+- Price per night.
+- Property images.
+- Category.
+- Owner.
+- Creation timestamp.
+
+Only the listing owner should be allowed to modify or delete their property.
+
+## 4.3 Search and filtering
+
+Users should be able to:
+
+- Search by location.
+- Filter properties by price.
+- Browse available listings.
+- Navigate between pages using pagination.
+- View listing details.
+
+Search results will become one of our primary Redis caching candidates.
+
+## 4.4 Reviews and ratings
+
+Users should be able to:
+
+- Add reviews.
+- Rate properties.
+- View existing reviews.
+- Delete or modify their own reviews.
+
+We will implement authorization checks to prevent users from manipulating reviews belonging to others.
+
+## 4.5 Booking functionality
+
+Users should be able to:
+
+- Select check-in and check-out dates.
+- Create a booking.
+- View their bookings.
+- Cancel bookings according to our defined rules.
+
+The backend must validate date ranges and prevent overlapping bookings for the same property.
+
+We will implement appropriate database-level consistency controls when booking functionality is developed.
+
+Payment integration is outside the initial project scope.
+
+---
+
+# 5. INITIAL PROJECT ARCHITECTURE
+
+We will follow a MODULAR MONOLITH architecture.
+
+This means that all application functionality will exist within one backend application, but the code will be separated into meaningful modules.
+
+We are deliberately avoiding microservices.
+
+## Proposed folder structure
+
+wanderlust-2.0/
+
+    src/
+      config/
+        db.js
+        passport.js
+        redis.js
+
+      controllers/
+        auth.controller.js
+        listing.controller.js
+        review.controller.js
+        booking.controller.js
+
+      models/
+        User.js
+        Listing.js
+        Review.js
+        Booking.js
+
+      routes/
+        auth.routes.js
+        listing.routes.js
+        review.routes.js
+        booking.routes.js
+
+      middleware/
+        auth.middleware.js
+        error.middleware.js
+        validation.middleware.js
+
+      services/
+        listing.service.js
+        booking.service.js
+        cache/
+          cache.service.js
+
+      utils/
+        asyncHandler.js
+        AppError.js
+
+      views/
+        layouts/
+        partials/
+        auth/
+        listings/
+        bookings/
+
+      public/
+        css/
+        js/
+        images/
+
+      app.js
+      server.js
+
+    tests/
+
+    nginx/
+      nginx.conf
+
+    Dockerfile
+    docker-compose.yml
+    .dockerignore
+    .env.example
+    .gitignore
+    package.json
+    README.md
+
+The structure can evolve as the project grows.
+
+We must not create unnecessary files before they are required.
+
+## Architectural responsibilities
+
+- Routes: Define application endpoints.
+- Controllers: Handle HTTP requests and responses.
+- Services: Contain business logic.
+- Models: Define database schemas and data access.
+- Middleware: Handle authentication, authorization, validation and errors.
+- Config: Manage database, Redis and application configuration.
+- Views: Render EJS templates.
+
+Controllers should not contain the entire business logic.
+
+This separation will make caching and future modifications easier.
+
+---
+
+# 6. DATABASE ARCHITECTURE
+
+## Decision: One shared MongoDB database
+
+We will use one MongoDB database shared by all backend instances.
+
+We will NOT create separate databases for Node.js instance 1, instance 2 and instance 3.
+
+Why?
+
+Imagine:
+
+1. A user creates a listing through Node instance 1.
+2. Another user accesses Node instance 2.
+3. The second instance must retrieve the same listing.
+
+If every instance has a separate database, data synchronization becomes unnecessarily complicated.
+
+Our architecture must have a single source of truth.
+
+### Database collections
+
+Initially, we expect the following collections:
+
+- users
+- listings
+- reviews
+- bookings
+
+We will add appropriate references, validation and indexes.
+
+### Database indexing
+
+We will introduce indexes for frequently queried fields, such as:
+
+- Listing location.
+- Listing owner.
+- Booking property.
+- Booking date fields.
+- User email.
+
+Indexes will be based on actual query patterns rather than created randomly.
+
+### Database hosting
+
+Our initial preference is MongoDB Atlas free tier, subject to current free-tier limits.
+
+We may also run MongoDB locally through Docker if required.
+
+The choice will be finalized during infrastructure setup.
+
+All backend instances must use the same database connection configuration.
+
+---
+
+# 7. DOCKER ARCHITECTURE
+
+## Why are we using Docker?
+
+Docker packages our application and its runtime dependencies into a reusable image.
+
+We can then create multiple containers from the same image.
+
+Instead of manually installing and configuring the application for every instance, we build the image once and run it multiple times.
+
+### Important distinction
+
+- Docker image: Reusable application blueprint.
+- Docker container: Running instance of an image.
+- Docker Compose: Tool for defining and managing multiple containers.
+- Physical/cloud machine: Infrastructure on which containers execute.
+
+Docker does not automatically provide load balancing.
+
+Nginx will perform that responsibility.
+
+## Our target container arrangement
+
+Initially, our local development environment will contain:
+
+1. Nginx container.
+2. Node.js application container 1.
+3. Node.js application container 2.
+4. Node.js application container 3.
+5. Redis container.
+
+MongoDB may initially be hosted through MongoDB Atlas rather than locally.
+
+If we choose local MongoDB later, it can also be added to Docker Compose.
+
+### Docker image strategy
+
+We will:
+
+- Create one Dockerfile.
+- Build one Wanderlust application image.
+- Reuse that image for all three backend containers.
+- Supply different environment variables or instance identifiers when required.
+- Keep application code identical across instances.
+
+### Docker Compose responsibilities
+
+Docker Compose will manage:
+
+- Application containers.
+- Nginx container.
+- Redis container.
+- Internal networking.
+- Environment variables.
+- Container dependencies.
+- Health checks.
+- Persistent storage where necessary.
+
+We should use container DNS/service names for internal communication rather than hardcoding container IP addresses.
+
+---
+
+# 8. HORIZONTAL SCALING
+
+## What are we implementing?
+
+We will run three copies of the same Node.js backend.
+
+For example:
+
+- Node instance 1.
+- Node instance 2.
+- Node instance 3.
+
+Each instance will execute the same application code.
+
+Initially, we will run them on one physical laptop using Docker.
+
+This demonstrates application-level horizontal scaling.
+
+It is important to document that three containers on one laptop are not three independent physical servers.
+
+### Why three instances?
+
+To understand:
+
+- Horizontal scaling.
+- Request distribution.
+- Shared state.
+- Stateless application design.
+- Instance failure.
+- Resource utilization.
+- Performance differences.
+
+### Stateless architecture requirement
+
+All backend instances must behave consistently.
+
+We must avoid relying on local process memory for shared application state.
+
+For example:
+
+- Authentication sessions must be shared.
+- Cache data must be shared.
+- Important application data must be persisted in MongoDB.
+- Temporary local files must not be required by another instance.
+
+This is one of our most important architectural decisions.
+
+---
+
+# 9. NGINX LOAD BALANCING
+
+Nginx will act as our reverse proxy and load balancer.
+
+Users should not communicate directly with individual backend instances.
+
+Instead:
+
+User → Nginx → Backend instance
+
+### Target architecture
+
+                  USERS
+                    |
+                    v
+             NGINX LOAD BALANCER
+                    |
+          +---------+---------+
+          |         |         |
+          v         v         v
+       NODE 1    NODE 2    NODE 3
+          |         |         |
+          +---------+---------+
+                    |
+          +---------+---------+
+          |                   |
+          v                   v
+        REDIS              MONGODB
+
+### Load-balancing strategy
+
+We will initially implement round-robin load balancing.
+
+Example:
+
+- Request 1 → Node 1.
+- Request 2 → Node 2.
+- Request 3 → Node 3.
+- Request 4 → Node 1.
+
+We will use Nginx upstream configuration.
+
+### Nginx responsibilities
+
+- Receive incoming HTTP requests.
+- Forward requests to backend instances.
+- Distribute traffic.
+- Forward relevant headers.
+- Support health-related routing behavior where configured.
+- Handle proxy timeouts.
+- Provide a single application entry point.
+
+### Important testing
+
+We will create an endpoint such as:
+
+GET /health
+
+The response will include:
+
+- Application status.
+- Instance identifier.
+
+For example:
+
+{
+  "status": "healthy",
+  "instance": "node-2"
+}
+
+This allows us to verify which instance handled each request.
+
+We will also simulate stopping one container and observe how Nginx behaves.
+
+We must distinguish between simple upstream failover and full active health checking. We will not claim capabilities that our chosen Nginx configuration does not actually provide.
+
+---
+
+# 10. REDIS CACHING
+
+## Decision: One shared Redis instance
+
+All three backend instances will use the same Redis instance.
+
+We will not create a separate Redis instance for each Node.js container.
+
+Why?
+
+Suppose Node 1 fetches a popular property and stores it in its local cache.
+
+If Node 2 receives the next request, it will not know about Node 1's local cache.
+
+This would defeat our shared caching objective.
+
+Instead, Redis will provide a common cache.
+
+### Redis responsibilities
+
+Initially:
+
+1. Cache popular property listings.
+2. Cache individual property details.
+3. Cache search results where appropriate.
+4. Store shared authentication sessions.
+5. Provide a shared infrastructure for future background jobs if added.
+
+### Cache-aside pattern
+
+We will implement the Cache-Aside Pattern.
+
+Example:
+
+User requests a listing.
+
+Step 1: Check Redis.
+
+Step 2: If the data exists, return it.
+
+This is called a CACHE HIT.
+
+Step 3: If the data does not exist, retrieve it from MongoDB.
+
+This is called a CACHE MISS.
+
+Step 4: Store the MongoDB result in Redis.
+
+Step 5: Return the response.
+
+Flow:
+
+       CLIENT REQUEST
+              |
+              v
+         REDIS CHECK
+              |
+        +-----+-----+
+        |           |
+      HIT          MISS
+        |           |
+        v           v
+     RETURN      MONGODB
+     DATA           |
+                    v
+                 REDIS
+                    |
+                    v
+                RETURN DATA
+
+### Cache invalidation
+
+This is extremely important.
+
+Imagine a property owner updates a listing.
+
+The previous property data may still exist in Redis.
+
+If we do nothing, users may receive outdated data.
+
+Therefore:
+
+- Create listing: Ensure relevant cached search results cannot hide the new listing.
+- Update listing: Invalidate the listing details and relevant search caches.
+- Delete listing: Invalidate the listing and relevant search caches.
+- Review update: Invalidate cached listing data if ratings or review counts are included.
+
+We will implement cache invalidation through the relevant service layer.
+
+### TTL
+
+TTL means Time To Live.
+
+Every cached value should have an expiration policy.
+
+For example, we may initially choose:
+
+- Listing details: 5 minutes.
+- Search results: 2 minutes.
+- Popular listings: 10 minutes.
+
+These are initial experimental values, not permanent requirements.
+
+We will tune them based on testing.
+
+### Redis performance measurement
+
+We will measure:
+
+- Cache hits.
+- Cache misses.
+- Cache hit ratio.
+- Response latency.
+- MongoDB query reduction.
+
+We must not claim that caching improves performance by a specific percentage until we measure it.
+
+---
+
+# 11. DISTRIBUTED SESSION MANAGEMENT
+
+This is a necessary part of supporting multiple backend instances.
+
+Initially, Passport.js and Express Session will manage authentication.
+
+However, using the default in-memory session store is unsuitable for our multi-instance architecture.
+
+Example problem:
+
+1. User logs in through Node 1.
+2. Session exists only in Node 1's process memory.
+3. Next request reaches Node 2.
+4. Node 2 cannot find the session.
+
+This causes authentication problems.
+
+### Our solution
+
+Use a Redis-backed Express Session store.
+
+All three backend instances will use the same Redis session store.
+
+Expected flow:
+
+User Login
+    |
+    v
+Node Instance 1
+    |
+    v
+Redis Session Store
+
+Later request:
+
+User
+    |
+    v
+Node Instance 2
+    |
+    v
+Redis Session Store
+    |
+    v
+Authenticated User
+
+We will configure:
+
+- Shared session store.
+- Consistent session secret.
+- Secure cookie settings appropriate for the deployment environment.
+- Session expiration.
+- Session regeneration on login.
+- Proper logout behavior.
+
+This is separate from listing caching, even though both use Redis.
+
+---
+
+# 12. DEPLOYMENT STRATEGY AND COST CONTROL
+
+Our project must remain within a ₹0 budget target.
+
+We will prioritize local development and testing.
+
+### Local infrastructure
+
+Our laptop will run:
+
+- Nginx.
+- Three Node.js containers.
+- Redis.
+
+MongoDB can initially use Atlas free tier.
+
+This allows us to build and demonstrate the entire local architecture.
+
+### Cloud deployment
+
+Render free services may be used for a public application demo.
+
+However, we must understand their limitations.
+
+Important considerations:
+
+- Free web services have limited instance scaling.
+- Free services sleep after inactivity.
+- Free services have limited monthly instance hours.
+- Free services do not support private-network communication.
+- Three separate free services are not equivalent to a managed multi-instance Render service.
+
+We must not assume that creating three differently named services automatically creates a production-grade private load-balanced cluster.
+
+### Oracle Cloud possibility
+
+Oracle Cloud Always Free resources may be explored for actual cloud VM experiments.
+
+However:
+
+- Resource availability is not guaranteed.
+- Account verification may be required.
+- Capacity may be unavailable.
+- Free resource limits must be respected.
+- We must monitor potential charges.
+
+Cloud deployment will be attempted only after local infrastructure works.
+
+### Cost policy
+
+- Do not enable paid upgrades.
+- Do not assume free tiers are unlimited.
+- Verify current service limits before deployment.
+- Avoid unexpected usage-based billing.
+- Never commit credentials to GitHub.
+
+---
+
+# 13. TESTING AND PERFORMANCE BENCHMARKING
+
+This is one of the most important parts of the project.
+
+We are not implementing Redis and Nginx just to mention them in our resume.
+
+We must demonstrate their actual behavior.
+
+## Tool: k6
+
+We will use k6 for load testing.
+
+### Experiment 1: Single backend
+
+Run one Node.js instance.
+
+Measure:
+
+- Average response time.
+- Median response time.
+- p95 response time.
+- Throughput.
+- Error rate.
+
+### Experiment 2: Three backend instances
+
+Run three Node.js instances behind Nginx.
+
+Measure the same metrics.
+
+Compare the results.
+
+### Experiment 3: Without Redis
+
+Send repeated requests to frequently accessed listing endpoints.
+
+Measure MongoDB query activity and request latency.
+
+### Experiment 4: With Redis
+
+Repeat the same workload.
+
+Measure:
+
+- Cache hit ratio.
+- Database query reduction.
+- Response latency.
+- Throughput.
+
+### Experiment 5: Failure simulation
+
+Stop one backend container.
+
+Observe:
+
+- Whether Nginx routes requests to remaining available instances.
+- Whether requests fail during the transition.
+- Whether authentication continues working.
+- Whether application data remains accessible.
+
+### Benchmarking principles
+
+- Use identical test conditions.
+- Keep test data consistent.
+- Record the exact test configuration.
+- Run multiple trials.
+- Do not fabricate performance results.
+- Document laptop hardware and resource constraints.
+
+The goal is to understand what actually improves and what becomes a bottleneck.
+
+---
+
+# 14. IMPLEMENTATION ROADMAP
+
+We will follow this exact order.
+
+## PHASE 1 — PROJECT FOUNDATION
+
+Goal: Build our own working application.
+
+Tasks:
+
+1. Create a new GitHub repository named wanderlust-scalable.
+2. Initialize Node.js.
+3. Install Express.
+4. Install Mongoose.
+5. Configure MongoDB.
+6. Configure dotenv.
+7. Configure EJS.
+8. Add Bootstrap.
+9. Create MVC folder structure.
+10. Build the Express server.
+11. Verify database connectivity.
+12. Create an initial homepage.
+
+Completion criteria:
+
+- Application starts successfully.
+- Database connection works.
+- EJS rendering works.
+- Project structure is established.
+- GitHub repository contains the initial implementation.
+
+## PHASE 2 — CORE FEATURES
+
+Tasks:
+
+1. User registration.
+2. User login.
+3. User logout.
+4. Property CRUD.
+5. Image upload.
+6. Property detail pages.
+7. Search and filtering.
+8. Pagination.
+9. Reviews and ratings.
+10. Booking functionality.
+11. Authorization and validation.
+12. Error handling.
+
+Completion criteria:
+
+The rental booking application works correctly as a normal single-instance backend.
+
+## PHASE 3 — DOCKERIZATION
+
+Tasks:
+
+1. Install and verify Docker.
+2. Create Dockerfile.
+3. Create .dockerignore.
+4. Build the application image.
+5. Run one application container.
+6. Configure environment variables.
+7. Create Docker Compose.
+8. Add the Redis service.
+9. Configure internal container networking.
+10. Verify application connectivity.
+
+Completion criteria:
+
+Wanderlust runs successfully inside Docker.
+
+## PHASE 4 — MULTIPLE BACKEND INSTANCES
+
+Tasks:
+
+1. Make application port configurable.
+2. Make application instance identity configurable.
+3. Run three containers using the same image.
+4. Ensure shared database access.
+5. Verify all three instances work.
+6. Ensure no critical shared state is stored in local memory.
+
+Completion criteria:
+
+Three independent application processes run successfully.
+
+## PHASE 5 — NGINX
+
+Tasks:
+
+1. Add Nginx container.
+2. Configure upstream backend group.
+3. Configure reverse proxy.
+4. Implement round-robin distribution.
+5. Forward appropriate HTTP headers.
+6. Configure timeouts.
+7. Add health endpoint.
+8. Test traffic distribution.
+9. Stop one backend and test failure behavior.
+
+Completion criteria:
+
+Users access Wanderlust through one entry point and Nginx distributes traffic among backend instances.
+
+## PHASE 6 — REDIS CACHING
+
+Tasks:
+
+1. Configure Redis.
+2. Connect all backend instances to the same Redis service.
+3. Implement cache service.
+4. Implement cache-aside pattern.
+5. Cache property details.
+6. Cache popular listing queries.
+7. Implement TTL.
+8. Implement cache invalidation.
+9. Implement cache hit/miss measurements.
+10. Test shared cache behavior across instances.
+
+Completion criteria:
+
+Repeated requests can be served from Redis, and updates invalidate affected cached data.
+
+## PHASE 7 — SHARED SESSIONS
+
+Tasks:
+
+1. Install Redis session-store integration.
+2. Configure Express Session.
+3. Connect Passport.js.
+4. Move sessions from default in-memory storage to Redis.
+5. Test login through Node 1.
+6. Test authenticated requests through Node 2.
+7. Test authenticated requests through Node 3.
+8. Test logout and session expiration.
+
+Completion criteria:
+
+Authentication works consistently across all three backend instances.
+
+## PHASE 8 — PERFORMANCE TESTING
+
+Tasks:
+
+1. Install k6.
+2. Prepare load-testing scripts.
+3. Test single-instance performance.
+4. Test three-instance performance.
+5. Test without Redis.
+6. Test with Redis.
+7. Record latency and throughput.
+8. Record cache hit ratio.
+9. Perform failure simulations.
+10. Prepare benchmark documentation.
+
+Completion criteria:
+
+We have real measurements demonstrating how our architecture behaves.
+
+## PHASE 9 — PUBLIC DEPLOYMENT
+
+Tasks:
+
+1. Evaluate free hosting options.
+2. Prepare production environment variables.
+3. Deploy public application.
+4. Configure MongoDB connectivity.
+5. Configure Redis connectivity if supported by our chosen hosting arrangement.
+6. Verify deployment.
+7. Document differences between local and cloud architectures.
+
+Completion criteria:
+
+The public version is accessible, and the distributed architecture is documented honestly.
+
+---
+
+# 15. IMPORTANT ARCHITECTURAL RULES
+
+These decisions must be preserved throughout development.
+
+### Rule 1: One application codebase
+
+All three backend instances must use the same source code and Docker image.
+
+### Rule 2: One shared MongoDB database
+
+All instances access the same persistent data source.
+
+### Rule 3: One shared Redis instance
+
+All instances use the same Redis cache and session store.
+
+### Rule 4: Nginx is the entry point
+
+In our local distributed setup, clients access the application through Nginx rather than connecting directly to individual application containers.
+
+### Rule 5: Backend must be stateless
+
+No important shared state should depend on one particular Node.js process.
+
+### Rule 6: Environment-based configuration
+
+Do not hardcode database credentials, Redis URLs, secrets or deployment-specific values.
+
+### Rule 7: Incremental implementation
+
+Do not implement multiple new infrastructure features simultaneously.
+
+### Rule 8: Preserve existing working functionality
+
+Before introducing a new infrastructure component, establish a working baseline and keep a known-good Git version.
+
+### Rule 9: Test every change
+
+Every feature must be tested before moving forward.
+
+### Rule 10: No fake scalability claims
+
+Three Docker containers on one laptop are not three independent physical servers.
+
+Performance improvement must be demonstrated with measurements.
+
+---
+
+# 16. RESUME OBJECTIVE
+
+After successful implementation, our project description can be written as:
+
+**Wanderlust — Horizontally Scalable Rental Booking Platform**
+
+Technologies: Node.js, Express.js, MongoDB, Redis, Docker, Docker Compose, Nginx, k6.
+
+Potential resume highlights, only after implementation:
+
+- Designed and developed a modular rental booking platform using Node.js, Express.js and MongoDB.
+- Containerized the backend using Docker and Docker Compose.
+- Implemented horizontal scaling using multiple Node.js instances behind an Nginx reverse proxy.
+- Implemented Redis-based distributed caching using the cache-aside pattern and cache invalidation.
+- Centralized session management using Redis for authentication across backend instances.
+- Conducted load testing and benchmarked latency, throughput and cache performance.
+- Evaluated backend failure behavior and traffic distribution.
+
+We will insert actual measured results only after our experiments.
+
+---
+
+# 17. DEVELOPMENT WORKING AGREEMENT
+
+This section is especially important for future ChatGPT conversations.
+
+The assistant helping with this project must follow these rules.
+
+1. Never assume that a feature has already been implemented.
+2. Always inspect the existing project structure before suggesting major code changes.
+3. Do not generate an entirely new project structure if one already exists and works.
+4. Explain why a technology is required before introducing it.
+5. Explain the purpose of each important configuration file.
+6. Provide complete code when a file needs to be created or replaced.
+7. Mention exactly which file to create or modify.
+8. Provide terminal commands appropriate for the user's operating system.
+9. Explain what each important command does.
+10. Do not skip debugging or testing.
+11. Do not move to the next phase until the current phase works.
+12. Avoid unnecessary abstractions and premature optimization.
+13. Keep security, scalability and maintainability in mind.
+14. Do not introduce paid technologies without explicit approval.
+15. Maintain consistency with this master blueprint.
+
+## How to teach each implementation
+
+For every major feature, follow this pattern:
+
+1. Conceptual explanation.
+2. Why we need it.
+3. Architecture and request flow.
+4. Files that need to be created or modified.
+5. Implementation.
+6. Terminal commands.
+7. Testing procedure.
+8. Expected output.
+9. Common errors and troubleshooting.
+10. Interview-oriented explanation.
+
+We want to understand the engineering, not just copy commands.
+
+---
+
+# 18. CURRENT PROJECT STATUS
+
+**Status: Planning completed. Implementation not yet started.**
+
+Confirmed decisions:
+
+- Build a completely original Wanderlust implementation.
+- Use Node.js and Express.
+- Use EJS and Bootstrap.
+- Use MongoDB as the persistent database.
+- Use Docker and Docker Compose.
+- Run three backend instances locally.
+- Use Nginx for reverse proxy and load balancing.
+- Use one shared Redis instance.
+- Implement Redis caching.
+- Implement shared Redis sessions.
+- Use k6 for performance testing.
+- Keep CDN postponed.
+- Keep Kubernetes, Kafka and microservices postponed.
+- Target a zero-cost development and demonstration environment.
+
+Not yet completed:
+
+- GitHub repository creation.
+- Initial project setup.
+- MongoDB configuration.
+- Application implementation.
+- Docker configuration.
+- Nginx configuration.
+- Redis integration.
+- Deployment.
+
+## NEXT IMMEDIATE ACTION
+
+Start PHASE 1.
+
+First, create the new GitHub repository:
+
+wanderlust-scalable
+
+Then initialize the Node.js application and establish the foundation.
+
+Do not jump directly into Docker, Nginx or Redis.
+
+We must first have a working original application.
+
+---
+
+# 19. HOW TO RESUME THIS PROJECT IN A NEW CHAT
+
+If the original conversation is lost, upload or paste this master blueprint and send the following instruction:
+
+"I am continuing my Wanderlust 2.0 project. Read the entire master blueprint carefully. Treat it as the source of truth for the project's architecture, technology decisions, implementation sequence and constraints. Do not redesign the project or introduce unnecessary technologies. First identify the current implementation phase, inspect the existing project files if available, and continue from the exact point where development stopped. Follow the development working agreement."
+
+If the actual code has also changed since this document was created, provide the latest GitHub repository or project files so that the assistant can identify the real implementation state.
+
+**MASTER PRINCIPLE: BUILD IT. UNDERSTAND IT. TEST IT. MEASURE IT. DOCUMENT IT.**
+
+Wanderlust 2.0 is not just another college project. It is our hands-on system design and backend engineering learning project.
